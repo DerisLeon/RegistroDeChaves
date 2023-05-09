@@ -31,23 +31,21 @@ function App() {
     setValues({ ...values, [event.target.name]: event.target.value });
   }
 
-  function handleSave(){
-    axios.post("http://localhost:8080/api/registro/", values).then(result => {
-      alert("Registro Feito com Sucesso!")
-    });
-  }
-
   const handleClear = () => {
     setValues({});
   };
 
-  const miniMax = () => {
+  const handleSave = () => {
     if (values.nome.length < 3 || values.nome.length > 80) {
       alert("Nome deve ter entre 3 e 80 caracteres")
     } else if (values.matricula.length < 6 || values.matricula.length > 12) {
       alert("Matrícula deve ter entre 6 e 12 caracteres")
     } else if (values.motivo.length < 3 || values.motivo.length > 80) {
       alert("Motivo deve ter entre 3 e 80 caracteres")
+    } else {
+      axios.post("http://localhost:8080/api/registro/", values).then(result => {
+      alert("Registro Feito com Sucesso!")
+    });
     }
   };
 
@@ -64,10 +62,7 @@ function App() {
             <form onSubmit={
               (event) => {
                 event.preventDefault();
-                if (miniMax() === true) {
-                  handleSave();
-                }
-
+                handleSave();
               }
             }>
 
