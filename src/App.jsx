@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
 import axios from 'axios';
-
+import * as Yup from 'yup';
 import sugestoesSetor from './sugestoesSetor';
 import sugestoesTipoRequisicao from './sugestoesTipoRequisicao';
 import sugestoesSolicitante from './sugestoesSolicitante';
@@ -43,21 +43,26 @@ function App() {
   };
 
   const handleSave = () => {
-    if (values.nome.length < 6 || values.nome.length > 80) {
-      alert("Nome deve ter entre 6 e 80 caracteres")
-    } else if (values.matricula.length < 6 || values.matricula.length > 12) {
-      alert("Matrícula deve ter entre 6 e 12 caracteres")
-    } else if (values.motivo.length < 4 || values.motivo.length > 80) {
-      alert("Motivo deve ter entre 4 e 80 caracteres")
-    } else {
-      axios.post("http://localhost:8080/api/registro/", values).then(result => {
-        alert("Registro Feito com Sucesso!");
+    const validationSchema = Yup.object().shape({
+      nome: Yup.string().required('Nome é obrigatório').matches(/^[A-Za-zÀ-ú ]*$/, 'Nome deve conter apenas letras').matches(/.*\S.*$/, 'Nome não pode conter apenas espaços').min(6, 'Nome deve ter no mínimo 6 caracteres').max(80, 'Nome deve ter no máximo 80 caracteres'),
+      matricula: Yup.string().required('Matrícula é obrigatória').matches(/^[0-9]*$/, 'Matrícula deve conter apenas números').min(6, 'Matrícula deve ter no mínimo 6 caracteres').max(12, 'Matrícula deve ter no máximo 12 caracteres'),
+      solicitante: Yup.string().required('Solicitante é obrigatório').min(6, 'Solicitante deve ter no mínimo 6 caracteres').max(80, 'Solicitante deve ter no máximo 80 caracteres'),
+      requisicao: Yup.string().required('Tipo de Requisição é obrigatório'),
+      motivo: Yup.string().required('Motivo é obrigatório').min(4, 'Motivo deve ter no mínimo 4 caracteres').max(80, 'Motivo deve ter no máximo 80 caracteres'),
+      setor: Yup.string().required('Setor é obrigatório'),
+    });
+
+
+    validationSchema.validate(values).then(() => {
+      axios.post('http://localhost:3001/registros', values).then(() => {
         setRegistrationSuccess(true);
       });
-    }
+    }).catch((err) => {
+      alert(err.errors);
+    });
   };
 
- 
+  
   return (
     <Container>
       <Grid container spacing={2}>
@@ -78,14 +83,7 @@ function App() {
                     label="Nome Completo"
                     name="nome"
                     onChange={handleChange}
-                    value={values.nome || ''}
-                    error={values.nome === ''}
-                    inputProps={{
-                      maxLength: 80,
-                      pattern: "[a-zA-ZÀ-ú ]*",
-                      title: "Nome deve ter entre 6 e 80 caracteres, não pode conter números"
-                    }}
-                    required
+                    value={values.nome || ''} 
                     sx={{ marginBottom: '10px' }}
                   />
                 </Grid>
@@ -97,13 +95,7 @@ function App() {
                     name="matricula"
                     onChange={handleChange}
                     value={values.matricula || ''}
-                    error={values.matricula === ''}
-                    inputProps={{
-                      maxLength: 12,
-                      pattern: "[0-9]*",
-                      title: "Matrícula deve ter entre 6 e 12 caracteres, contendo apenas números"
-                    }}
-                    required
+                    error={values.matricula === ''}                    
                     sx={{ marginBottom: '10px' }}
                   />
                 </Grid>
@@ -150,8 +142,6 @@ function App() {
                     onChange={handleChange}
                     value={values.motivo || ''}
                     error={values.motivo === ''}
-                    inputProps={{ maxLength: 80, title: "Motivo deve ter entre 4 e 80 caracteres" }}
-                    required
                     sx={{ marginBottom: '10px' }}
                   />
                 </Grid>
