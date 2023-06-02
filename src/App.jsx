@@ -27,10 +27,9 @@ function App() {
 
   useEffect(() => {
     if (registrationSuccess) {
-      // Atualizar a página após 1 segundo
       setTimeout(() => {
         window.location.reload();
-      }, 1000);
+      }, 500);
     }
   }, [registrationSuccess]);
 
