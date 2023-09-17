@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Axios from 'axios';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import DeleteIcon from '@mui/icons-material/Delete';
 import {
   Box,
+  Button,
+  Grid,
   styled,
   Table,
   TableBody,
@@ -13,7 +15,10 @@ import {
   TableRow,
   Input,
   IconButton,
+  Typography
 } from "@mui/material";
+import { useNavigate, Link } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
 
 const StyledTable = styled(Table)(() => ({
   whiteSpace: "pre",
@@ -25,29 +30,56 @@ const StyledTable = styled(Table)(() => ({
   },
 }));
 
-const PaginationTable = () => {
-  const baseURLRegistro = "http://localhost:8080/api/registro/";
+const Home = () => {
+  const { signout, admin } = useAuth();
+  const navigate = useNavigate();
+
+  const baseURLRegistro = "http://localhost:8080/setores/registros";
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [registro, setRegistro] = useState([]);
+  const [registros, setRegistros] = useState([]);
   const [busca, setBusca] = useState('');
+  const [filteredRegistros, setFilteredRegistros] = useState([]);
 
   useEffect(() => {
     Axios.get(baseURLRegistro)
-      .then(json => setRegistro(json.data));
+      .then(response => {
+        setRegistros(response.data);
+        setFilteredRegistros(response.data);
+      })
+      .catch(error => console.log(error));
   }, []);
+
+  useEffect(() => {
+    const filteredData = registros.filter((registro) => {
+      return (
+        registro.nomeSolicitante.toLowerCase().includes(busca.toLowerCase()) ||
+        registro.nomeSetor.toLowerCase().includes(busca.toLowerCase())
+      );
+    });
+    setFilteredRegistros(filteredData);
+  }, [busca, registros]);
 
   const handleDelete = (id) => {
     if (window.confirm("Tem certeza que deseja excluir?")) {
-      Axios.delete(baseURLRegistro + id)
+      Axios.delete(`${baseURLRegistro}/${id}`)
         .then((response) => {
           if (response.status === 200) {
-            window.location.reload();
+            const updatedRegistros = registros.filter(registro => registro.id !== id);
+            setRegistros(updatedRegistros);
+            setFilteredRegistros(updatedRegistros);
           }
         })
         .catch((error) => {
           console.log(error);
         });
+    }
+  };
+
+  const handleSignout = () => {
+    if (window.confirm("Tem certeza que deseja sair?")) {
+      signout();
+      navigate("/");
     }
   };
 
@@ -60,15 +92,6 @@ const PaginationTable = () => {
     setPage(0);
   };
 
-  const filteredRegistro = useMemo(() => {
-    return registro.filter((registro) => {
-      return (
-        registro.nome.toLowerCase().includes(busca.toLowerCase()) ||
-        registro.setor.toLowerCase().includes(busca.toLowerCase())
-      )
-    });
-  }, [busca, registro]);
-
   const formatarDataHora = (data, hora) => {
     const dataHoraBrasil = new Date(data + "T" + hora);
     return dataHoraBrasil.toLocaleString("pt-BR", {
@@ -80,6 +103,16 @@ const PaginationTable = () => {
       hour12: false,
     });
   };
+
+  useEffect(() => {
+    if (!admin) {
+      navigate('/login');
+    }
+  }, [admin, navigate]);
+
+  if (!admin) {
+    return null;
+  }
 
   return (
     <Box width="100%" overflow="auto">
@@ -101,30 +134,31 @@ const PaginationTable = () => {
           <TableRow>
             <TableCell align="left">Nome Completo</TableCell>
             <TableCell align="left">Matrícula</TableCell>
-            <TableCell align="left">Tipo de Registro</TableCell>
-            <TableCell align="left">Setor</TableCell>
-            <TableCell align="left">Solicitante</TableCell>
             <TableCell align="left">Motivo</TableCell>
+            <TableCell align="left">Solicitante</TableCell>
+            <TableCell align="left">Setor</TableCell>
+            <TableCell align="left">Tipo do Registro</TableCell>
             <TableCell align="left">Data e Hora</TableCell>
+            
             <TableCell align="right"></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {filteredRegistro
+          {filteredRegistros
             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-            .map((registro, index) => (
-              <TableRow key={index.id} hover>
-                <TableCell align="left">{registro.nome}</TableCell>
-                <TableCell align="left">{registro.matricula}</TableCell>
-                <TableCell align="left">{registro.requisicao}</TableCell>
-                <TableCell align="left">{registro.setor}</TableCell>
-                <TableCell align="left">{registro.solicitante}</TableCell>
+            .map((registro) => (
+              <TableRow key={registro.id} hover>
+                <TableCell align="left">{registro.nomeSolicitante}</TableCell>
+                <TableCell align="left">{registro.matriculaSolicitante}</TableCell>
                 <TableCell align="left">{registro.motivo}</TableCell>
+                <TableCell align="left">{registro.tipoSolicitante}</TableCell>
+                <TableCell align="left">{registro.nomeSetor}</TableCell>
+                <TableCell align="left">{registro.tipoAcao}</TableCell>
                 <TableCell align="left">
                   {formatarDataHora(registro.data, registro.hora)}
                 </TableCell>
                 <TableCell align="right">
-                  <IconButton onClick={handleDelete.bind(this, registro.id)}>
+                  <IconButton onClick={() => handleDelete(registro.id)}>
                     <DeleteIcon color="error"/>
                   </IconButton>
                 </TableCell>
@@ -138,15 +172,27 @@ const PaginationTable = () => {
         page={page}
         component="div"
         rowsPerPage={rowsPerPage}
-        count={registro.length}
+        count={filteredRegistros.length}
         onPageChange={handleChangePage}
         rowsPerPageOptions={[10, 25, 50, 100]}
         onRowsPerPageChange={handleChangeRowsPerPage}
         nextIconButtonProps={{ "aria-label": "Next Page" }}
         backIconButtonProps={{ "aria-label": "Previous Page" }}
       />
+
+      <Typography variant="body2">
+          Quer cadastrar um novo administrador?&nbsp;
+          <Typography variant="body2" component="span" color="primary">
+              <Link to="/signup">Cadastrar</Link>
+          </Typography>
+      </Typography>
+      <Grid item xs={12} sm={6} sx={{ marginTop: '50px' }}>
+        <Button variant="contained" color="error" onClick={handleSignout} fullWidth>
+          Sair
+        </Button>
+      </Grid>
     </Box>
   );
 };
 
-export default PaginationTable;
+export default Home;
